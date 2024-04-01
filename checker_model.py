@@ -9,8 +9,11 @@ class CheckerModel:
 		# MonteCarlo
 		# Neural Network
 
-	def __init__(self):
-		self.create_grid()
+	def __init__(self, checker_grid=None):
+		if checker_grid is None:
+			self.create_grid()
+		else:
+			self.checker_grid = checker_grid
 		self.turn = 1 # 1 : pour le joueur 1 et -1 pour le joueur 2
 
 		print(self.checker_grid)
@@ -23,6 +26,8 @@ class CheckerModel:
 		les cellules numpy.nan sont interdites
 		les cellules positives : joueur 1
 		les cellules négatives : joueur 2
+		cellule normale la valeur aboslue vaut 1
+		cellule reine la valeur absolue vaut 5
 		"""
 
 		self.checker_grid = numpy.zeros(shape=(10, 10))
@@ -61,39 +66,109 @@ class CheckerModel:
 			return "not_accessible"
 		else : 
 			# là ou on va gérer l'attaque d'une pièce adverse
-			return "check_more_in_depth"
+			return "enemy"
 
 
 
 	def get_all_possible_moves(self):
+		"""
+		dict_of_possible_move :
+			+ key : position des pièces du joueur en cours (row, col) : tuple position de la pièce
+			+ value : les moves possibles <= ??????????
+		"""
 		dict_of_possible_moves = dict()
+
 		for row in range(0, 10):
 			for col in range(0, 10):
 				if self.checker_grid[row, col] == self.turn:
-					dict_of_possible_moves[(row, col)] = []
+					dict_of_possible_moves[(row, col)] = self.get_possible_moves_for_current_piece(row, col, depth=0, possible_moves_for_current_piece=dict())
 
-					row_to_check = row - self.turn 
-					left_col = col - 1
-					right_col = col + 1
+
+		dict_of_best_moves = {}
+		max_depth = 0
+
+		for piece, possible_moves_for_current_piece in dict_of_possible_moves.items():
+			for depth, arrival_positions in possible_moves_for_current_piece.items():
+				if depth > max_depth and arrival_positions:
+					max_depth = depth
+					dict_of_best_moves = {}
+					dict_of_best_moves[piece] = arrival_positions
+				elif depth == max_depth and arrival_positions:
+					dict_of_best_moves[piece] = arrival_positions
+
+
+		return dict_of_best_moves
+
+
+
+
+
+	def get_possible_moves_for_current_piece(self, row, col, depth, possible_moves_for_current_piece):
+		"""
+		Algo du backtracking : Sudoku, Chemin plus court pour un cavalier, N-Queens
+		Il s'agit d'un parcours en profondeur.
+		ca renvoie un dictionnaire qui va indexé un déplacement final en fonction de sa profondeur
+
+
+		on n'a pas encore gérer le cas où la pièce reine <=
+		"""
+		if depth not in possible_moves_for_current_piece.keys():
+			possible_moves_for_current_piece[depth] = set()
+		if depth+1 not in possible_moves_for_current_piece.keys():
+			possible_moves_for_current_piece[depth+1] = set()
+
+		row_to_check = row - self.turn 
+		cols_to_check = [col-1, col+1]			
+
+
+
+		for col_to_check in cols_to_check:
+			if not CheckerModel.is_out_of_bound(row_to_check, col_to_check):
+
+				is_busy_state =  self.is_busy(row_to_check, col_to_check)
+				if is_busy_state == "accessible":
+					possible_moves_for_current_piece[depth].add((row_to_check, col_to_check))
+				
+
+				elif is_busy_state == "enemy":
+					row_arrival, col_arrival = 2*row_to_check - row, 2*col_to_check - col
 					
-					if not CheckerModel.is_out_of_bound(row_to_check, left_col):
-
-						is_busy_state =  self.is_busy(row_to_check, left_col)
-						if is_busy_state == "accessible":
-
-							dict_of_possible_moves[(row, col)].append((row_to_check, left_col))
-						elif is_busy_state == "check_more_in_depth":
-							pass
+					if not CheckerModel.is_out_of_bound(row_arrival, col_arrival):
+						if self.is_busy(row_arrival, col_arrival) == "accessible":
+							
+							self.checker_grid[row, col] = 0
+							self.checker_grid[row_to_check, col_to_check] = 0
+							self.checker_grid[row_arrival, col_arrival] = self.turn
 
 
-					if not CheckerModel.is_out_of_bound(row_to_check, right_col):
-						is_busy_state =  self.is_busy(row_to_check, right_col)
-						if is_busy_state == "accessible":
-							dict_of_possible_moves[(row, col)].append((row_to_check, right_col))
-						elif is_busy_state == "check_more_in_depth":
-							pass
+							possible_moves_for_current_piece[depth+1].add((row_arrival, col_arrival))
 
-		
+							self.get_possible_moves_for_current_piece(row_arrival, col_arrival, depth+1, possible_moves_for_current_piece)
+
+							self.checker_grid[row, col] = self.turn
+							self.checker_grid[row_to_check, col_to_check] = - self.turn
+							self.checker_grid[row_arrival, col_arrival] = 0
 
 
-		return dict_of_possible_moves
+		return possible_moves_for_current_piece
+
+
+
+
+
+if __name__ == '__main__':
+	nan = numpy.nan
+	checker_grid = numpy.array([
+							[nan, -1., nan, -1., nan, 0., nan, 0, nan, -1.,],
+							[-1., nan, -1., nan, -1., nan, -1., nan, -1., nan],
+							[nan, -1., nan, 0, nan, 0, nan, -1., nan, -1.,],
+							[-1., nan, -1., nan, -1., nan, 0., nan, -1., nan],
+							[nan, 1, nan, 1, nan,  0., nan,  0., nan,  0.,],
+							[ 0., nan,  0, nan,  0., nan,  0., nan,  0., nan],
+							[nan,  1., nan,  1., nan,  1., nan,  1., nan,  1.,],
+							[ 1., nan,  1., nan,  1., nan,  1., nan,  1., nan],
+							[nan,  1., nan,  1., nan,  1., nan,  1., nan,  1.,],
+							[ 1., nan,  1., nan,  1., nan,  1., nan,  1., nan]
+							])
+
+	checker_grid_object = CheckerModel(checker_grid)
