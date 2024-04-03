@@ -1,3 +1,5 @@
+from config_file import *
+
 import numpy
 import math
 
@@ -16,9 +18,9 @@ class CheckerModel:
 			self.checker_grid = checker_grid
 		self.turn = 1 # 1 : pour le joueur 1 et -1 pour le joueur 2
 
-		print(self.checker_grid)
-		for key, value in self.get_all_possible_moves().items():
-			print(key, value)
+		self.dict_of_best_moves = self.get_best_moves()
+
+
 
 
 	def create_grid(self):
@@ -30,15 +32,15 @@ class CheckerModel:
 		cellule reine la valeur absolue vaut 5
 		"""
 
-		self.checker_grid = numpy.zeros(shape=(10, 10))
+		self.checker_grid = numpy.zeros(shape=(ROWS, COLS))
 
-		for row in range(0, 10):
-			for col in range(0, 10):
+		for row in range(0, ROWS):
+			for col in range(0, COLS):
 				if (row + col) % 2 == 0:
 					self.checker_grid[row, col]= math.nan
 
-		for row in range(0, 10):
-			for col in range(0, 10):
+		for row in range(0, ROWS):
+			for col in range(0, COLS):
 
 				if not numpy.isnan(self.checker_grid)[row, col] and row < 4: # joueur 2
 					self.checker_grid[row, col] = -1
@@ -48,9 +50,20 @@ class CheckerModel:
 
 
 
+
+
+	def move_piece(self, selected_piece, move):
+		self.checker_grid[move] = self.turn
+		self.checker_grid[selected_piece] = 0
+		# détruire les pièces adverse
+		self.turn = -1 if self.turn==1 else 1
+
+		self.dict_of_best_moves = self.get_best_moves()
+
+
 	@staticmethod
 	def is_out_of_bound(row, col):
-		return row < 0 or row >= 10 or col < 0 or col >= 10
+		return row < 0 or row >= ROWS or col < 0 or col >= COLS
 
 
 	def is_busy(self, row, col):
@@ -70,7 +83,7 @@ class CheckerModel:
 
 
 
-	def get_all_possible_moves(self):
+	def get_best_moves(self):
 		"""
 		dict_of_possible_move :
 			+ key : position des pièces du joueur en cours (row, col) : tuple position de la pièce
@@ -78,8 +91,8 @@ class CheckerModel:
 		"""
 		dict_of_possible_moves = dict()
 
-		for row in range(0, 10):
-			for col in range(0, 10):
+		for row in range(0, ROWS):
+			for col in range(0, COLS):
 				if self.checker_grid[row, col] == self.turn:
 					dict_of_possible_moves[(row, col)] = self.get_possible_moves_for_current_piece(row, col, depth=0, possible_moves_for_current_piece=dict())
 
@@ -126,7 +139,7 @@ class CheckerModel:
 			if not CheckerModel.is_out_of_bound(row_to_check, col_to_check):
 
 				is_busy_state =  self.is_busy(row_to_check, col_to_check)
-				if is_busy_state == "accessible":
+				if is_busy_state == "accessible" and depth == 0:
 					possible_moves_for_current_piece[depth].add((row_to_check, col_to_check))
 				
 
@@ -158,7 +171,7 @@ class CheckerModel:
 
 if __name__ == '__main__':
 	nan = numpy.nan
-	checker_grid = numpy.array([
+	test_grid = numpy.array([
 							[nan, -1., nan, -1., nan, 0., nan, 0, nan, -1.,],
 							[-1., nan, -1., nan, -1., nan, -1., nan, -1., nan],
 							[nan, -1., nan, 0, nan, 0, nan, -1., nan, -1.,],
@@ -171,4 +184,8 @@ if __name__ == '__main__':
 							[ 1., nan,  1., nan,  1., nan,  1., nan,  1., nan]
 							])
 
-	checker_grid_object = CheckerModel(checker_grid)
+	checker_grid_object = CheckerModel(test_grid)
+
+	print(checker_grid_object.checker_grid)
+	for piece, moves in checker_grid_object.dict_of_best_moves.items():
+		print(piece, moves)
