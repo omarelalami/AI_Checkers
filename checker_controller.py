@@ -14,33 +14,40 @@ class CheckerController:
 
 	def selected_piece(self, x, y):
 		selected_piece = checker_view.CheckerView.compute_row_col_of_selected_piece(x, y)
-		possible_moves = []
+		possible_moves_positions = []
 
-		if selected_piece in self.checker_model_object.dict_of_best_moves.keys():
-			possible_moves = self.checker_model_object.dict_of_best_moves[selected_piece]
+		if selected_piece in self.checker_model_object.dict_of_possible_moves.keys():
+			possible_moves_positions = [move_object.get_final_position()\
+										for move_object in self.checker_model_object.dict_of_possible_moves[selected_piece]]
 
-		return selected_piece, possible_moves
+		return selected_piece, possible_moves_positions
 
 
-	def action_on_grid(self, selected_piece, possible_moves):
+
+
+	def action_on_grid(self, selected_piece, possible_moves_positions):
 		clicked_position = pygame.mouse.get_pos()
 
-		if not selected_piece or not possible_moves:
-			selected_piece, possible_moves = self.selected_piece(*clicked_position)
+		if not selected_piece or not possible_moves_positions:
+			selected_piece, possible_moves_positions = self.selected_piece(*clicked_position)
 
 
-		elif selected_piece and possible_moves:
+		elif selected_piece and possible_moves_positions:
 			move = checker_view.CheckerView.compute_row_col_of_selected_piece(*clicked_position)
 			
-			if move in possible_moves: # quand la personne clique sur un point vert
+			if move in possible_moves_positions: # quand la personne clique sur un point vert
 				self.checker_model_object.move_piece(selected_piece, move)
 				selected_piece = None
-				possible_moves = []
+				possible_moves_positions = []
 			
 			else: # quand la personne veut changer la pièce selectionnée:
-				selected_piece, possible_moves = self.selected_piece(*clicked_position)
+				selected_piece, possible_moves_positions = self.selected_piece(*clicked_position)
 
-		return selected_piece, possible_moves
+		return selected_piece, possible_moves_positions
+
+
+
+
 
 
 	def run_game(self):
@@ -49,7 +56,7 @@ class CheckerController:
 		clock = pygame.time.Clock()
 
 		selected_piece = None
-		possible_moves = []
+		possible_moves_positions = []
 
 		while run:
 
@@ -60,14 +67,14 @@ class CheckerController:
 					run = False
 				
 				if event.type == pygame.MOUSEBUTTONDOWN:
-					selected_piece, possible_moves = self.action_on_grid(selected_piece, possible_moves)
+					selected_piece, possible_moves_positions = self.action_on_grid(selected_piece, possible_moves_positions)
 					
 
 
 			self.checker_view_object.update_grid(self.checker_model_object.checker_grid)
 
-			if selected_piece and possible_moves:
-				self.checker_view_object.show_possible_moves(selected_piece, possible_moves)
+			if selected_piece and possible_moves_positions:
+				self.checker_view_object.show_possible_moves(selected_piece, possible_moves_positions)
 
 			pygame.display.update()
 

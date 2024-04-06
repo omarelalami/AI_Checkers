@@ -1,4 +1,5 @@
 from config_file import *
+from piece import Piece
 import pygame
 
 
@@ -22,13 +23,15 @@ class CheckerView:
 	def draw_pieces(self, checker_grid):
 		for row in range(0, ROWS):
 			for col in range(0, COLS):
-				if checker_grid[row, col] == 1:
+				if type(checker_grid[row][col]) == Piece:
+					current_piece = checker_grid[row][col]
 					piece_position = CheckerView.compute_piece_position_on_window(row, col)
-					pygame.draw.circle(self.window, WHITE, piece_position, PIECE_RADIUS)
+					
+					if current_piece.player == 1:
+						pygame.draw.circle(self.window, WHITE, piece_position, PIECE_RADIUS)
 
-				elif checker_grid[row, col] == -1:
-					piece_position = CheckerView.compute_piece_position_on_window(row, col)
-					pygame.draw.circle(self.window, BLACK, piece_position, PIECE_RADIUS)
+					elif current_piece.player == -1:
+						pygame.draw.circle(self.window, BLACK, piece_position, PIECE_RADIUS)
 
 
 	def update_grid(self, checker_grid):

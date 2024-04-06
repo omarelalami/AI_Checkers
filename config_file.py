@@ -4,8 +4,9 @@ HEIGHT = 800
 WIDTH = 800
 
 
-ROWS = 10
-COLS = 10
+ROWS = 6
+COLS = 6
+FILLED_ROWS = 2
 
 
 SQUARE_SIZE = HEIGHT // ROWS
@@ -18,3 +19,5 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0 ,0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
+
+
