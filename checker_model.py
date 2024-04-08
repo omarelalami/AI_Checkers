@@ -1,15 +1,18 @@
 from config_file import *
-from utils import *
+from utils import is_in_bound
 
-
-from piece import Piece
 from move import Move
+from piece import Piece
+
 
 import numpy
 import math
 
+import copy
+from itertools import product
+
+
 class CheckerModel:
-	# attaquer un cellule adverse
 	# detection du chemin le plus long
 	# créer un fonction qui va permettre l'intégration du bot qui pourra prendre le role du joueur 2:
 		# MinMax 
@@ -25,20 +28,13 @@ class CheckerModel:
 
 		self.dict_of_possible_moves = self.get_possible_moves()
 
-
+		self.history = []
 
 
 	def create_grid(self):
-		"""
-		les cellules numpy.nan sont interdites
-		les cellules positives : joueur 1
-		les cellules négatives : joueur 2
-		cellule normale la valeur aboslue vaut 1
-		cellule reine la valeur absolue vaut 5
-		"""
-
 
 		self.checker_grid = [[0 for _ in range(COLS)] for _ in range(ROWS)]
+
 
 		for row in range(0, ROWS):
 			for col in range(0, COLS):
@@ -51,53 +47,65 @@ class CheckerModel:
 					if row < FILLED_ROWS: # joueur 2
 						self.checker_grid[row][col] = Piece(row, col, player=-1)
 
-					elif row > ROWS - FILLED_ROWS -1 : # joueur 1
+					elif row > ROWS - FILLED_ROWS - 1: # joueur 2
 						self.checker_grid[row][col] = Piece(row, col, player=1)
 
 
 
-
-
 	def move_piece(self, selected_piece_position, move_position):
+		self.history.append(copy.deepcopy(self.checker_grid))
 		
 		row_selection, col_selection = selected_piece_position
 
+		
 		current_piece = self.checker_grid[row_selection][col_selection]
-
+		
 		current_piece.row, current_piece.col = move_position
 
-		self.checker_grid[row_selection][col_selection] = 0
+		if (self.turn == 1 and current_piece.row == 0) or (self.turn == -1 and current_piece.row == ROWS -1):
+			current_piece.become_king()
 
+		self.checker_grid[row_selection][col_selection] = 0
 		self.checker_grid[current_piece.row][current_piece.col] = current_piece
 
 
 		for possible_move_object in self.dict_of_possible_moves[selected_piece_position]:
 			if possible_move_object.get_final_position() == move_position:
-				for attacked_piece_position in possible_move_object.list_attacked_enemy_pieces:
-					row_to_attack, col_to_attack = attacked_piece_position
+				
+				for piece_position_to_attact in possible_move_object.list_attacked_enemy_pieces:
+					row_to_attack, col_to_attack = piece_position_to_attact
 					self.checker_grid[row_to_attack][col_to_attack] = 0
-
-
+		
 		self.turn = -1 if self.turn==1 else 1
-
 		self.dict_of_possible_moves = self.get_possible_moves()
 
 
 
+	def undo_last_action(self):
+		if self.history:
+			self.checker_grid = self.history[-1]
+			self.history = self.history[:-1]
+			self.turn = -1 if self.turn==1 else 1
+			self.dict_of_possible_moves = self.get_possible_moves()
+
 
 
 	def get_cell_state(self, row, col):
-
-		if is_out_of_bound(row, col):
-			return "is_out_of_bound" # rien à faire
-
-
+		"""
+		3 cas :
+			- la cellule est vide                                      : accessible
+			- la cellule est prise avec une pièce du joueur en cours   : inacessible
+			- la cellule est prise avec une pièce du joueur adverse	   : on devra observer l'état des cellules en haut à droite/gauche de celle-ci
+		"""
+		if not is_in_bound(row, col):
+			return "out_of_bound" # rien à faire
+		
 		elif self.checker_grid[row][col] == 0:
-			return "accessible" # déplacement simple de profondeur 0
-
-		elif type(self.checker_grid[row][col]) == Piece: 
-
+			return "accessible" # déplacement simple
+		
+		elif type(self.checker_grid[row][col]) == Piece:
 			piece = self.checker_grid[row][col]
+			
 			if piece.player == self.turn:
 				return "not_accessible" # rien à faire
 			
@@ -107,138 +115,119 @@ class CheckerModel:
 
 
 	def get_possible_moves(self):
-		"""
-		dict_of_possible_move :
-			+ key : position des pièces du joueur en cours (row, col) : tuple position de la pièce
-			+ value : les moves possibles <= ??????????
-		"""
+
 		dict_of_all_moves = dict()
 
-		for row in range(0, ROWS):
-			for col in range(0, COLS):
-				if type(self.checker_grid[row][col]) == Piece:
-					current_piece = self.checker_grid[row][col]
-					if current_piece.player == self.turn :
-						depth, possible_moves_for_current_piece = self.get_possible_moves_for_current_piece(current_piece, depth=0, all_moves_for_current_piece=[])
+		for row, col in product(range(0, ROWS), range(0, COLS)):
+			if type(self.checker_grid[row][col]) == Piece:
+				current_piece = self.checker_grid[row][col]
 
-						dict_of_all_moves[(row, col)] = depth, possible_moves_for_current_piece
+				if current_piece.player == self.turn:
 
-		# les moves possibles sont les moves à depth maximale
-		dict_of_possible_moves = {} # à remplir
+					depth, all_moves_for_current_piece = self.get_possible_moves_for_current_piece(current_piece, depth=0, all_moves_for_current_piece=[])
+					dict_of_all_moves[(row, col)] = depth, all_moves_for_current_piece
+
+
+		dict_of_possible_moves = {}
 		max_depth = 0
 
 		for piece, (depth, possible_moves_for_current_piece) in dict_of_all_moves.items():
+
 			if depth > max_depth:
-				max_depth = depth 
-				dict_of_possible_moves = {piece: possible_moves_for_current_piece}
+				max_depth = depth
+				dict_of_possible_moves = {piece : possible_moves_for_current_piece}
+			
 			elif depth == max_depth:
 				dict_of_possible_moves[piece] = possible_moves_for_current_piece
 		
+
 		return dict_of_possible_moves
 
 
 
-
-
 	def get_possible_moves_for_current_piece(self, current_piece, depth, all_moves_for_current_piece):
-		"""
-		Algo du backtracking : Sudoku, Chemin plus court pour un cavalier, N-Queens
-		Il s'agit d'un parcours en profondeur.
-		ca renvoie un dictionnaire qui va indexé un déplacement final en fonction de sa profondeur
 
-
-		on n'a pas encore gérer le cas où la pièce reine <=
-		"""
 		row, col = current_piece.row, current_piece.col
 
-		row_to_check = row - self.turn 
-		cols_to_check = [col-1, col+1]			
+		cells_to_check = current_piece.get_cells_to_check()
 
 
-
-		for col_to_check in cols_to_check:
-
-			cell_state =  self.get_cell_state(row_to_check, col_to_check)
-			if cell_state == "accessible" and depth == 0:
-				move_object = Move(initial_piece_position=(row, col),\
-								  list_piece_positions=[(row_to_check, col_to_check)],\
-								  list_attacked_enemy_pieces=[])
-				
-				all_moves_for_current_piece.append(move_object)
+		for row_to_check, col_to_check in cells_to_check:
+			
+			stop_verify = False
+			for row_to_verify in range(row, row_to_check, 1 if row_to_check > row else -1):
+				for col_to_verify in range(col, col_to_check, 1 if col_to_check > col else -1):
+					if type(self.checker_grid[row_to_verify][col_to_verify]) == Piece and row_to_verify != row and col_to_verify != col:
+						stop_verify = True
 			
 
-			elif cell_state == "enemy":
-				row_arrival, col_arrival = 2*row_to_check - row, 2*col_to_check - col
+			if stop_verify:
+				pass
 
-				if self.get_cell_state(row_arrival, col_arrival) == "accessible":
-					
-					attacked_piece = self.checker_grid[row_to_check][col_to_check]
-					self.checker_grid[row][col] = 0
-					self.checker_grid[row_to_check][col_to_check] = 0
-					self.checker_grid[row_arrival][col_arrival] = current_piece
-					current_piece.row, current_piece.col = row_arrival, col_arrival
+			else:
+				cell_state =  self.get_cell_state(row_to_check, col_to_check)
 
-					# actualiser ma list all_moves_for_current_piece
-					if depth == 0 :
-						move_object = Move(initial_piece_position=(row, col),\
-										   list_piece_positions=[(row_arrival, col_arrival)],\
-								  		   list_attacked_enemy_pieces=[(row_to_check, col_to_check)])
-						all_moves_for_current_piece.append(move_object)
+				# déplacement simple
+				if cell_state == "accessible" and depth == 0 and (row_to_check - row != self.turn or current_piece.king):
+					move_object = Move(initial_piece_position = (row, col),\
+										 list_piece_positions = [(row_to_check, col_to_check)],\
+										 list_attacked_enemy_pieces = [])
 
-					else:
-						if depth < all_moves_for_current_piece[-1].get_depth():
-							current_move_object = all_moves_for_current_piece[-1].extract_common_deplacement(extraction_depth=depth-1)
-							all_moves_for_current_piece.append(current_move_object)
-
-						all_moves_for_current_piece[-1].update_move(new_piece_postion=(row_arrival, col_arrival),\
-															   new_attacked_enemy_piece=(row_to_check, col_to_check))
+					all_moves_for_current_piece.append(move_object)
+				
 
 
-					self.get_possible_moves_for_current_piece(current_piece, depth+1, all_moves_for_current_piece)
+				# déplacement en profondeur
+				elif cell_state == "enemy":
+					row_arrival = row_to_check + 1 if row_to_check  > row else row_to_check -1
+					col_arrival = col_to_check + 1 if col_to_check  > col else col_to_check -1
 
-					
-					current_piece.row, current_piece.col = row, col
-					self.checker_grid[row][col] = current_piece
-					self.checker_grid[row_to_check][col_to_check] = attacked_piece
-					self.checker_grid[row_arrival][col_arrival] = 0
+
+					if self.get_cell_state(row_arrival, col_arrival) == "accessible" :
+
+						attacked_piece = self.checker_grid[row_to_check][col_to_check]
+
+						self.checker_grid[row][col] = 0
+						self.checker_grid[row_to_check][col_to_check] = 0
+						self.checker_grid[row_arrival][col_arrival] = current_piece
+						current_piece.row, current_piece.col = row_arrival, col_arrival
+
+						if depth == 0 :
+							move_object = Move(initial_piece_position = (row, col),\
+												 list_piece_positions = [(row_arrival, col_arrival)],\
+												 list_attacked_enemy_pieces = [(row_to_check, col_to_check)])
+							all_moves_for_current_piece.append(move_object)
+						
+						else:
+							if depth <= all_moves_for_current_piece[-1].get_depth():
+								current_move_object = all_moves_for_current_piece[-1].extract_common_deplacement(extraction_depth=depth)
+								all_moves_for_current_piece.append(current_move_object)
+
+
+							all_moves_for_current_piece[-1].update_move(new_piece_position=(row_arrival, col_arrival),\
+																		new_attacked_enemy_piece=(row_to_check, col_to_check))
+
+
+						self.get_possible_moves_for_current_piece(current_piece, depth+1, all_moves_for_current_piece)
+
+						current_piece.row, current_piece.col = row, col
+						self.checker_grid[row][col] = current_piece
+						self.checker_grid[row_to_check][col_to_check] = attacked_piece
+						self.checker_grid[row_arrival][col_arrival] = 0
 
 
 		max_depth = 0
-		possible_moves_for_current_piece = []
+		possible_moves = []
 
 		for current_move in all_moves_for_current_piece:
 			current_move_depth = current_move.get_depth()
+			
 			if current_move_depth > max_depth:
 				max_depth = current_move_depth
-				possible_moves_for_current_piece = [current_move]
+				possible_moves = [current_move]
 			
 			elif current_move_depth == max_depth:
-				possible_moves_for_current_piece.append(current_move)
+				possible_moves.append(current_move)
 
 
-		return max_depth, possible_moves_for_current_piece
-
-
-
-
-
-if __name__ == '__main__':
-	nan = numpy.nan
-	test_grid = numpy.array([
-							[nan, -1., nan, -1., nan, 0., nan, 0, nan, -1.,],
-							[-1., nan, -1., nan, -1., nan, -1., nan, -1., nan],
-							[nan, -1., nan, 0, nan, 0, nan, -1., nan, -1.,],
-							[-1., nan, -1., nan, -1., nan, 0., nan, -1., nan],
-							[nan, 1, nan, 1, nan,  0., nan,  0., nan,  0.,],
-							[ 0., nan,  0, nan,  0., nan,  0., nan,  0., nan],
-							[nan,  1., nan,  1., nan,  1., nan,  1., nan,  1.,],
-							[ 1., nan,  1., nan,  1., nan,  1., nan,  1., nan],
-							[nan,  1., nan,  1., nan,  1., nan,  1., nan,  1.,],
-							[ 1., nan,  1., nan,  1., nan,  1., nan,  1., nan]
-							])
-
-	checker_grid_object = CheckerModel(test_grid)
-
-	print(checker_grid_object.checker_grid)
-	for piece, moves in checker_grid_object.dict_of_possible_moves.items():
-		print(piece, moves)
+		return max_depth, possible_moves
