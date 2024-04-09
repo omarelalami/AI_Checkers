@@ -1,5 +1,9 @@
 import checker_model, checker_view
+
+
 from config_file import *
+
+
 
 import pygame
 
@@ -36,6 +40,8 @@ class CheckerController:
 				
 				if move in possible_moves_positions: # quand la personne clique sur un point vert
 					self.checker_model_object.move_piece(selected_piece, move)
+					self.checker_model_object.ia_move(model="minimax")
+					
 					selected_piece = None
 					possible_moves_positions = []
 				

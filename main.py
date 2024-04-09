@@ -26,10 +26,14 @@ if __name__ == "__main__":
 
 
 	#case 3
+
 	# checker_grid[0][1] = Piece(0, 1, 1)
 	# checker_grid[0][1].become_king()
 	# checker_grid[1][2] = Piece(1, 2, -1)
 	# checker_grid[2][3] = Piece(2, 3, -1)
 	# checker_grid[3][4] = Piece(3, 4, -1)
+
+
+	#case 4 
 
 	checker_controller_object = checker_controller.CheckerController(checker_grid=checker_grid)

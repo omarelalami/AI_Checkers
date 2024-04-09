@@ -10,12 +10,14 @@ import math
 
 import copy
 from itertools import product
+import random
+
 
 
 class CheckerModel:
 	# detection du chemin le plus long
 	# créer un fonction qui va permettre l'intégration du bot qui pourra prendre le role du joueur 2:
-		# MinMax 
+		# MiniMax 
 		# MonteCarlo
 		# Neural Network
 
@@ -59,7 +61,7 @@ class CheckerModel:
 
 		
 		current_piece = self.checker_grid[row_selection][col_selection]
-		
+
 		current_piece.row, current_piece.col = move_position
 
 		if (self.turn == 1 and current_piece.row == 0) or (self.turn == -1 and current_piece.row == ROWS -1):
@@ -132,14 +134,17 @@ class CheckerModel:
 		max_depth = 0
 
 		for piece, (depth, possible_moves_for_current_piece) in dict_of_all_moves.items():
+			if not possible_moves_for_current_piece:
+				pass
 
-			if depth > max_depth:
+			elif depth > max_depth:
 				max_depth = depth
 				dict_of_possible_moves = {piece : possible_moves_for_current_piece}
 			
 			elif depth == max_depth:
 				dict_of_possible_moves[piece] = possible_moves_for_current_piece
 		
+
 
 		return dict_of_possible_moves
 
@@ -231,3 +236,106 @@ class CheckerModel:
 
 
 		return max_depth, possible_moves
+
+
+
+	def ia_move(self, model):
+		if model == "random":
+			selected_piece_position, move_position = self.random_model_predict()
+			self.move_piece(selected_piece_position, move_position)
+			
+		elif model == "minimax":
+			best_selected_piece_position, best_move_position = self.minimax_model_predict(depth=3)
+			self.move_piece(best_selected_piece_position, best_move_position)
+
+
+	def minimax_model_predict(self, depth):
+		best_score = float("inf")
+		best_selected_piece_position, best_move_position = None, None
+
+		possible_actions = []
+		for selected_piece_position, moves in self.dict_of_possible_moves.items():
+			for move in moves:
+				if move:
+					possible_actions.append((selected_piece_position, move.get_final_position()))
+
+		for possible_action in possible_actions:
+			print(*possible_action)
+			self.move_piece(*possible_action)
+			
+			score = self.minimax(robot_turn=False, depth=depth)
+			if score < best_score:
+				best_score = score 
+				best_selected_piece_position, best_move_position = possible_action
+
+			self.undo_last_action()
+
+		return best_selected_piece_position, best_move_position
+
+
+
+	def minimax(self, robot_turn, depth, alpha=float('inf'), beta=-float('inf')):
+		if depth == 0: 
+			return self.evaluate_grid()
+
+		else :
+			best_score = float("inf") if robot_turn else - float("inf")
+
+			possible_actions = []
+			for selected_piece_position, moves in self.dict_of_possible_moves.items():
+				for move in moves:
+					if move:
+						possible_actions.append((selected_piece_position, move.get_final_position()))
+
+
+			for possible_action in possible_actions:
+				self.move_piece(*possible_action)
+				score = self.minimax(robot_turn=not robot_turn, depth=depth-1, alpha=alpha, beta=beta)
+				best_score = min(score, best_score) if robot_turn else max(score, best_score)
+				if robot_turn:
+					beta = min(beta, best_score)
+				else:
+					alpha = max(alpha, best_score)
+
+				if beta < alpha:
+					break
+
+				self.undo_last_action()
+
+			return best_score
+
+
+
+
+
+
+	def evaluate_grid(self, king_value=5):
+		score = 0
+		for row in range(0, ROWS):
+			for col in range(0, COLS):
+				if type(self.checker_grid[row][col]) == Piece:
+					current_piece = self.checker_grid[row][col]
+					score += current_piece.player * (king_value if current_piece.king else 1)
+		return score
+
+
+
+
+
+
+
+
+
+
+
+
+	def random_model_predict(self):
+
+		selected_piece_position = random.choice(list(self.dict_of_possible_moves.keys()))
+		move = random.choice(self.dict_of_possible_moves[selected_piece_position])
+
+		move_position = move.get_final_position()
+
+		return selected_piece_position, move_position
+
+
