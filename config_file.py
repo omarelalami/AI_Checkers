@@ -4,9 +4,9 @@ import pygame
 	Backend config
 ###
 """
-ROWS = 10
+ROWS = 6
 COLS = ROWS
-FILLED_ROWS = 4
+FILLED_ROWS = 1
 
 
 

@@ -245,7 +245,7 @@ class CheckerModel:
 			self.move_piece(selected_piece_position, move_position)
 			
 		elif model == "minimax":
-			best_selected_piece_position, best_move_position = self.minimax_model_predict(depth=3)
+			best_selected_piece_position, best_move_position = self.minimax_model_predict(depth=5)
 			self.move_piece(best_selected_piece_position, best_move_position)
 
 
@@ -256,15 +256,14 @@ class CheckerModel:
 		possible_actions = []
 		for selected_piece_position, moves in self.dict_of_possible_moves.items():
 			for move in moves:
-				if move:
-					possible_actions.append((selected_piece_position, move.get_final_position()))
+				possible_actions.append((selected_piece_position, move.get_final_position()))
 
 		for possible_action in possible_actions:
-			print(*possible_action)
+
 			self.move_piece(*possible_action)
 			
 			score = self.minimax(robot_turn=False, depth=depth)
-			if score < best_score:
+			if score <= best_score:
 				best_score = score 
 				best_selected_piece_position, best_move_position = possible_action
 
@@ -275,57 +274,45 @@ class CheckerModel:
 
 
 	def minimax(self, robot_turn, depth, alpha=float('inf'), beta=-float('inf')):
-		if depth == 0: 
-			return self.evaluate_grid()
+		game_state = self.check_game_state()
+		if game_state == "draw_game":
+			return 0
+	
+		elif game_state == 1:
+			return float("inf")
 
-		else :
-			best_score = float("inf") if robot_turn else - float("inf")
+		elif game_state == -1:
+			return -float("inf")
 
-			possible_actions = []
-			for selected_piece_position, moves in self.dict_of_possible_moves.items():
-				for move in moves:
-					if move:
+		elif game_state == "game_in_progress":
+			if depth == 0: 
+				return CheckerModel.evaluate_grid(self.checker_grid)
+
+			else :
+				best_score = float("inf") if robot_turn else - float("inf")
+
+				possible_actions = []
+				for selected_piece_position, moves in self.dict_of_possible_moves.items():
+					for move in moves:
 						possible_actions.append((selected_piece_position, move.get_final_position()))
 
 
-			for possible_action in possible_actions:
-				self.move_piece(*possible_action)
-				score = self.minimax(robot_turn=not robot_turn, depth=depth-1, alpha=alpha, beta=beta)
-				best_score = min(score, best_score) if robot_turn else max(score, best_score)
-				if robot_turn:
-					beta = min(beta, best_score)
-				else:
-					alpha = max(alpha, best_score)
+				for possible_action in possible_actions:
+					self.move_piece(*possible_action)
+					score = self.minimax(robot_turn=not robot_turn, depth=depth-1, alpha=alpha, beta=beta)
+					best_score = min(score, best_score) if robot_turn else max(score, best_score)
+					if robot_turn:
+						beta = min(beta, best_score)
+					else:
+						alpha = max(alpha, best_score)
 
-				if beta < alpha:
-					break
-
-				self.undo_last_action()
-
-			return best_score
+					self.undo_last_action()
+					
+					if beta < alpha:
+						break
 
 
-
-
-
-
-	def evaluate_grid(self, king_value=5):
-		score = 0
-		for row in range(0, ROWS):
-			for col in range(0, COLS):
-				if type(self.checker_grid[row][col]) == Piece:
-					current_piece = self.checker_grid[row][col]
-					score += current_piece.player * (king_value if current_piece.king else 1)
-		return score
-
-
-
-
-
-
-
-
-
+				return best_score
 
 
 
@@ -339,3 +326,33 @@ class CheckerModel:
 		return selected_piece_position, move_position
 
 
+
+	@staticmethod
+	def evaluate_grid(checker_grid, king_value=5):
+		score = 0
+		for row in range(0, ROWS):
+			for col in range(0, COLS):
+				if type(checker_grid[row][col]) == Piece:
+					current_piece = checker_grid[row][col]
+					score += current_piece.player * (king_value if current_piece.king else 1)
+		return score
+
+
+
+	def check_game_state(self):
+		if len(self.history) >= 25:
+			draw_game = True
+			game_evaluation = CheckerModel.evaluate_grid(self.history[-25:])
+			for checker_grid in self.history[-24:]:
+				if CheckerModel.evaluate_grid(checker_grid) != game_evaluation:
+					draw_game = False
+
+			if draw_game:
+				return "draw_game"
+		
+		if not self.dict_of_possible_moves.keys(): # si une personne doit et ne peut jouer alors elle a perdu
+			return 1 if self.turn == -1 else -1
+		
+
+		else:
+			return "game_in_progress"
