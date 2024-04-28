@@ -245,7 +245,7 @@ class CheckerModel:
 			self.move_piece(selected_piece_position, move_position)
 			
 		elif model == "minimax":
-			best_selected_piece_position, best_move_position = self.minimax_model_predict(depth=5)
+			best_selected_piece_position, best_move_position = self.minimax_model_predict(depth=50)
 			self.move_piece(best_selected_piece_position, best_move_position)
 
 
@@ -258,18 +258,21 @@ class CheckerModel:
 			for move in moves:
 				possible_actions.append((selected_piece_position, move.get_final_position()))
 
-		for possible_action in possible_actions:
-
-			self.move_piece(*possible_action)
+		for selected_piece_position, move_position in possible_actions:
+			self.move_piece(selected_piece_position, move_position)
 			
 			score = self.minimax(robot_turn=False, depth=depth)
 			if score <= best_score:
 				best_score = score 
-				best_selected_piece_position, best_move_position = possible_action
+				best_selected_piece_position = selected_piece_position
+				best_move_position = move_position
 
 			self.undo_last_action()
 
 		return best_selected_piece_position, best_move_position
+
+
+
 
 
 

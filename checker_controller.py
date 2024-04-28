@@ -9,6 +9,7 @@ import pygame
 
 class CheckerController:
 	# connexion backend / frontend
+ 
 	def __init__(self, checker_grid):
 		self.checker_model_object = checker_model.CheckerModel(checker_grid)
 		self.checker_view_object = checker_view.CheckerView()
@@ -58,6 +59,7 @@ class CheckerController:
 
 
 	def run_game(self):
+		
 
 		run = True
 		clock = pygame.time.Clock()
