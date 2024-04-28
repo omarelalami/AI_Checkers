@@ -1,7 +1,7 @@
 from checker_model import CheckerModel
 import tqdm
 
-number_games_to_test = 200
+number_games_to_test = 10_000
 wins_player_1 = 0
 wins_player_2 = 0
 
